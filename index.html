@@ -4,7 +4,8 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>CAmuebla | A tu estilo</title>
-  <meta name="description" content="CAmuebla: muebles a medida en melamina y MDF. Cocinas, salas, TV y baños. Diseño, fabricación e instalación en Tegucigalpa." />
+  <meta name="description" content="CAmuebla: muebles a medida. Cocinas, salas, TV y baños. Diseño, fabricación e instalación en Tegucigalpa." />
+
   <style>
     :root{
       --bg:#0b0f14;
@@ -17,15 +18,112 @@
       --shadow: 0 18px 40px rgba(0,0,0,.35);
       --radius:18px;
       --max:1120px;
+
+      --ease: cubic-bezier(.2,.8,.2,1);
     }
     *{box-sizing:border-box}
-    html,body{margin:0;padding:0;background:radial-gradient(1200px 600px at 20% -10%, rgba(255,209,102,.12), transparent 60%),
-                               radial-gradient(900px 500px at 90% 0%, rgba(6,214,160,.10), transparent 55%),
-                               var(--bg);
-              color:var(--text); font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;}
+    html,body{
+      margin:0;padding:0;
+      background:
+        radial-gradient(1200px 600px at 20% -10%, rgba(255,209,102,.12), transparent 60%),
+        radial-gradient(900px 500px at 90% 0%, rgba(6,214,160,.10), transparent 55%),
+        var(--bg);
+      color:var(--text);
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      scroll-behavior:smooth;
+    }
     a{color:inherit;text-decoration:none}
+
+    /* ===== Transiciones globales ===== */
+    *{
+      transition: color .25s var(--ease),
+                  background-color .25s var(--ease),
+                  border-color .25s var(--ease),
+                  transform .25s var(--ease),
+                  box-shadow .25s var(--ease),
+                  opacity .25s var(--ease),
+                  filter .25s var(--ease);
+    }
+
     .wrap{max-width:var(--max); margin:0 auto; padding:0 18px;}
-    /* NAV */
+
+    /* ===== LOADER ===== */
+    .loader{
+      position:fixed; inset:0; z-index:9999;
+      display:grid; place-items:center;
+      background:
+        radial-gradient(900px 500px at 30% 0%, rgba(255,209,102,.12), transparent 60%),
+        radial-gradient(900px 500px at 80% 20%, rgba(6,214,160,.10), transparent 55%),
+        rgba(11,15,20,.98);
+      backdrop-filter: blur(10px);
+      opacity:1;
+      pointer-events:all;
+    }
+    .loader.hide{
+      opacity:0;
+      pointer-events:none;
+    }
+    .loader-card{
+      width:min(520px, 92vw);
+      border:1px solid var(--line);
+      border-radius: calc(var(--radius) + 10px);
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+      box-shadow: var(--shadow);
+      padding:24px;
+      text-align:center;
+    }
+    .loader-logo{
+      width:64px;height:64px;border-radius:22px;
+      margin: 6px auto 14px;
+      background: linear-gradient(135deg, rgba(255,209,102,.98), rgba(6,214,160,.95));
+      position:relative;
+      box-shadow: 0 18px 40px rgba(0,0,0,.35);
+    }
+    .loader-logo:before{
+      content:""; position:absolute; inset:16px 14px;
+      border-radius:16px; border:2px solid rgba(11,15,20,.65);
+    }
+    .loader-title{
+      font-weight:1000;
+      letter-spacing:.4px;
+      font-size:18px;
+      margin:0 0 6px;
+    }
+    .loader-sub{
+      color:var(--muted);
+      margin:0 0 16px;
+      line-height:1.5;
+      font-weight:700;
+      font-size:13px;
+    }
+    .bar{
+      height:12px;
+      border-radius:999px;
+      border:1px solid var(--line);
+      background: rgba(255,255,255,.04);
+      overflow:hidden;
+    }
+    .bar > span{
+      display:block; height:100%;
+      width: 35%;
+      border-radius:999px;
+      background: linear-gradient(135deg, rgba(255,209,102,.98), rgba(6,214,160,.95));
+      animation: loadbar 1.2s var(--ease) infinite;
+    }
+    @keyframes loadbar{
+      0%{ transform: translateX(-80%); width:35%;}
+      50%{ transform: translateX(30%); width:55%;}
+      100%{ transform: translateX(180%); width:35%;}
+    }
+    .loader-foot{
+      margin-top:12px;
+      color:rgba(233,238,246,.75);
+      font-size:12px;
+      font-weight:800;
+      letter-spacing:.2px;
+    }
+
+    /* ===== NAV ===== */
     .nav{
       position:sticky; top:0; z-index:50;
       backdrop-filter: blur(10px);
@@ -47,18 +145,33 @@
     .brand h1{font-size:18px; margin:0; letter-spacing:.4px;}
     .brand small{display:block; color:var(--muted); margin-top:2px; font-size:12px;}
     .menu{display:flex; gap:14px; align-items:center;}
-    .menu a{color:var(--muted); font-weight:600; font-size:14px; padding:10px 10px; border-radius:12px;}
+    .menu a{color:var(--muted); font-weight:600; font-size:14px; padding:10px 10px; border-radius:12px; position:relative;}
     .menu a:hover{color:var(--text); background:rgba(255,255,255,.05)}
+    .menu a::after{
+      content:"";
+      position:absolute;
+      left:10px; right:10px; bottom:6px;
+      height:2px;
+      border-radius:999px;
+      background: linear-gradient(135deg, rgba(255,209,102,.98), rgba(6,214,160,.95));
+      transform: scaleX(0);
+      transform-origin:left;
+      opacity:.9;
+    }
+    .menu a:hover::after{transform: scaleX(1);}
+
     .cta{
       background: linear-gradient(135deg, rgba(255,209,102,.98), rgba(6,214,160,.95));
       color:#0b0f14; font-weight:900;
       padding:10px 14px; border-radius:14px;
       box-shadow: 0 14px 30px rgba(0,0,0,.25);
       border:1px solid rgba(255,255,255,.18);
+      position:relative;
     }
     .cta:hover{filter:brightness(1.02)}
     .hamb{display:none; border:1px solid var(--line); background:rgba(255,255,255,.04); color:var(--text); border-radius:12px; padding:10px 12px; font-weight:800;}
-    /* HERO */
+
+    /* ===== HERO ===== */
     .hero{padding:54px 0 26px;}
     .hero-grid{display:grid; grid-template-columns: 1.2fr .8fr; gap:20px; align-items:stretch;}
     .hero-card{
@@ -75,7 +188,6 @@
       background: radial-gradient(circle at 30% 30%, rgba(255,209,102,.22), transparent 60%),
                   radial-gradient(circle at 60% 70%, rgba(6,214,160,.16), transparent 60%);
       top:-160px; right:-160px;
-      filter: blur(0px);
     }
     .kicker{
       display:inline-flex; gap:10px; align-items:center;
@@ -98,6 +210,8 @@
       background:rgba(255,255,255,.04);
       color:var(--text);
       font-weight:800; font-size:14px;
+      position:relative;
+      transform: translateZ(0);
     }
     .btn:hover{background:rgba(255,255,255,.06)}
     .btn.primary{
@@ -110,7 +224,8 @@
       padding:9px 12px; border-radius:999px; border:1px solid var(--line);
       background:rgba(255,255,255,.03); color:var(--muted); font-weight:800; font-size:12px;
     }
-    /* SIDE CARD */
+
+    /* ===== SIDE CARD ===== */
     .side{
       border:1px solid var(--line);
       border-radius: calc(var(--radius) + 6px);
@@ -136,11 +251,13 @@
       font-weight:700; color:var(--muted); font-size:13px;
     }
     .contact-mini a{color:var(--text)}
-    /* SECTIONS */
+
+    /* ===== SECTIONS ===== */
     section{padding:34px 0;}
     .section-title{display:flex; align-items:end; justify-content:space-between; gap:14px; margin-bottom:14px;}
     .section-title h3{margin:0; font-size:22px;}
     .section-title p{margin:0; color:var(--muted); max-width:65ch; line-height:1.6;}
+
     .grid{
       display:grid; gap:14px;
       grid-template-columns: repeat(12, 1fr);
@@ -155,6 +272,7 @@
     }
     .card h4{margin:8px 0 6px; font-size:16px;}
     .card p{margin:0; color:var(--muted); line-height:1.6; font-size:14px;}
+
     .pill{
       display:inline-flex; align-items:center; gap:8px;
       font-weight:900; font-size:12px;
@@ -170,7 +288,8 @@
       display:grid; place-items:center;
       font-weight:900; color:var(--text);
     }
-    /* Catalog */
+
+    /* ===== CATALOG ===== */
     .filters{display:flex; gap:10px; flex-wrap:wrap; margin:10px 0 16px;}
     .chip{
       cursor:pointer;
@@ -215,11 +334,64 @@
       border:1px solid var(--line);
       background:rgba(255,255,255,.03);
       font-weight:900;
+      position:relative;
+      transform: translateZ(0);
     }
     .mini-btn:hover{background:rgba(255,255,255,.06)}
-    /* Process */
+
+    /* ===== PROJECTS (Recientes) ===== */
+    .project{
+      grid-column: span 6;
+      border:1px solid var(--line);
+      border-radius: calc(var(--radius) + 2px);
+      background: rgba(255,255,255,.03);
+      overflow:hidden;
+      box-shadow: 0 12px 28px rgba(0,0,0,.22);
+      position:relative;
+    }
+    .project-top{
+      height:180px;
+      background:
+        radial-gradient(220px 120px at 20% 30%, rgba(255,209,102,.25), transparent 60%),
+        radial-gradient(240px 140px at 80% 60%, rgba(6,214,160,.18), transparent 60%),
+        linear-gradient(135deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+      border-bottom: 1px solid var(--line);
+      position:relative;
+    }
+    .project-top .label{
+      position:absolute; left:14px; top:14px;
+      display:inline-flex; gap:8px; align-items:center;
+      padding:8px 10px;
+      border-radius:999px;
+      border:1px solid var(--line);
+      background: rgba(11,15,20,.55);
+      color: rgba(233,238,246,.9);
+      font-weight:1000;
+      font-size:12px;
+    }
+    .project-top .label .spark{
+      width:8px;height:8px;border-radius:999px;background:var(--brand);
+      box-shadow: 0 0 0 6px rgba(255,209,102,.12);
+    }
+    .project-body{padding:14px;}
+    .project-body h4{margin:6px 0 6px; font-size:16px;}
+    .project-meta{
+      display:flex; gap:10px; flex-wrap:wrap;
+      margin-top:10px;
+    }
+    .meta-pill{
+      font-weight:900; font-size:12px;
+      padding:7px 10px;
+      border-radius:999px;
+      border:1px solid var(--line);
+      background: rgba(255,255,255,.03);
+      color: var(--muted);
+    }
+
+    /* ===== PROCESS ===== */
     .steps .card{grid-column: span 3;}
-    /* Contact */
+
+    /* ===== CONTACT ===== */
     .contact{
       display:grid; grid-template-columns: 1fr 1fr; gap:14px;
     }
@@ -243,14 +415,16 @@
     input:focus, textarea:focus{border-color: rgba(255,209,102,.55); box-shadow: 0 0 0 4px rgba(255,209,102,.10);}
     .form-actions{display:flex; gap:10px; flex-wrap:wrap; margin-top:12px;}
     .note{color:var(--muted); font-size:13px; line-height:1.5;}
-    /* Footer */
+
+    /* ===== FOOTER ===== */
     footer{
       border-top:1px solid var(--line);
       padding:22px 0;
       color:var(--muted);
     }
     .footer-grid{display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:space-between;}
-    /* WhatsApp Floating */
+
+    /* ===== WhatsApp Floating ===== */
     .wa{
       position:fixed; right:16px; bottom:16px;
       background: linear-gradient(135deg, rgba(6,214,160,.98), rgba(255,209,102,.85));
@@ -262,15 +436,65 @@
       border:1px solid rgba(255,255,255,.18);
       display:flex; gap:10px; align-items:center;
       z-index:80;
+      animation: floaty 2.2s var(--ease) infinite;
+      transform: translateZ(0);
     }
-    .wa:hover{filter:brightness(1.02)}
-    /* Responsive */
+    .wa:hover{animation-play-state: paused; transform: translateY(-2px) scale(1.02); filter:brightness(1.02)}
+
+    @keyframes floaty{
+      0%,100%{ transform: translateY(0); }
+      50%{ transform: translateY(-4px); }
+    }
+
+    /* ===== Hover PRO: botones + shimmer ===== */
+    .btn:hover, .mini-btn:hover, .cta:hover{
+      transform: translateY(-2px) scale(1.02);
+      box-shadow: 0 18px 40px rgba(0,0,0,.28);
+      filter: brightness(1.03);
+    }
+    .btn:active, .mini-btn:active, .cta:active{
+      transform: translateY(0) scale(.99);
+    }
+    .btn::after, .mini-btn::after, .cta::after{
+      content:"";
+      position:absolute; inset:0;
+      border-radius: inherit;
+      background: linear-gradient(120deg, transparent 0%, rgba(255,255,255,.14) 40%, transparent 80%);
+      transform: translateX(-120%);
+      opacity:0;
+      pointer-events:none;
+    }
+    .btn:hover::after, .mini-btn:hover::after, .cta:hover::after{
+      opacity:1;
+      transform: translateX(120%);
+      transition: transform .7s var(--ease), opacity .2s var(--ease);
+    }
+
+    /* ===== Hover PRO: cards ===== */
+    .card:hover, .item:hover, .stat:hover, .project:hover{
+      transform: translateY(-4px);
+      box-shadow: 0 22px 55px rgba(0,0,0,.35);
+      border-color: rgba(255,255,255,.16);
+    }
+    .item:hover .thumb{
+      transform: scale(1.03);
+      filter: contrast(1.02) brightness(1.02);
+    }
+    .chip:hover{
+      transform: translateY(-2px);
+      background: rgba(255,255,255,.05);
+      color: var(--text);
+    }
+    .chip.active:hover{ transform: translateY(-2px) scale(1.01); }
+
+    /* ===== Responsive ===== */
     @media (max-width: 920px){
       .hero-grid{grid-template-columns: 1fr}
       .menu{display:none}
       .hamb{display:inline-flex}
       .card{grid-column: span 6}
       .item{grid-column: span 6}
+      .project{grid-column: span 12}
       .steps .card{grid-column: span 6}
       .contact{grid-template-columns:1fr}
       .hero h2{font-size:38px}
@@ -281,10 +505,27 @@
       .steps .card{grid-column: span 12}
       .hero h2{font-size:34px}
     }
+
+    /* ===== Accesibilidad ===== */
+    @media (prefers-reduced-motion: reduce){
+      *{ animation:none !important; transition:none !important; }
+      html{ scroll-behavior:auto; }
+    }
   </style>
 </head>
 
 <body>
+  <!-- LOADER -->
+  <div class="loader" id="loader" aria-label="Cargando sitio">
+    <div class="loader-card">
+      <div class="loader-logo" aria-hidden="true"></div>
+      <p class="loader-title">CAmuebla</p>
+      <p class="loader-sub">A tu estilo — cargando tu experiencia…</p>
+      <div class="bar" aria-hidden="true"><span></span></div>
+      <div class="loader-foot">Diseño • Fabricación • Instalación</div>
+    </div>
+  </div>
+
   <!-- NAV -->
   <div class="nav">
     <div class="wrap nav-inner">
@@ -300,6 +541,7 @@
 
       <nav class="menu" id="menu">
         <a href="#servicios">Servicios</a>
+        <a href="#proyectos">Proyectos</a>
         <a href="#catalogo">Catálogo</a>
         <a href="#proceso">Proceso</a>
         <a href="#testimonios">Testimonios</a>
@@ -402,6 +644,100 @@
           <h4>Asesoría y diseño</h4>
           <p>Te ayudamos con medidas, propuesta visual y elección de acabados.</p>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PROJECTS -->
+  <section id="proyectos">
+    <div class="wrap">
+      <div class="section-title">
+        <div>
+          <h3>Proyectos recientes</h3>
+          <p>Cuando me pasés fotos reales, aquí ponemos una galería top. Por ahora dejé ejemplos para que se vea lleno y pro.</p>
+        </div>
+      </div>
+
+      <div class="grid">
+        <article class="project">
+          <div class="project-top">
+            <div class="label"><span class="spark"></span> Cocina premium</div>
+          </div>
+          <div class="project-body">
+            <div class="pill">🍳 Proyecto</div>
+            <h4>Cocina en L con alacenas altas</h4>
+            <p class="tagline">Diseño moderno con espacios para micro, despensa y acabados elegantes.</p>
+            <div class="project-meta">
+              <span class="meta-pill">A medida</span>
+              <span class="meta-pill">Instalación</span>
+              <span class="meta-pill">Acabado premium</span>
+            </div>
+            <div class="row">
+              <div class="price">Cotización rápida</div>
+              <a class="mini-btn" data-wa="Proyecto: Cocina en L con alacenas altas" href="#">Pedir</a>
+            </div>
+          </div>
+        </article>
+
+        <article class="project">
+          <div class="project-top">
+            <div class="label"><span class="spark"></span> Sala / TV</div>
+          </div>
+          <div class="project-body">
+            <div class="pill">📺 Proyecto</div>
+            <h4>Centro de entretenimiento minimalista</h4>
+            <p class="tagline">Cables ocultos, repisas decorativas y almacenamiento para consolas.</p>
+            <div class="project-meta">
+              <span class="meta-pill">Minimalista</span>
+              <span class="meta-pill">Cables ocultos</span>
+              <span class="meta-pill">Repisas</span>
+            </div>
+            <div class="row">
+              <div class="price">Cotización rápida</div>
+              <a class="mini-btn" data-wa="Proyecto: Centro de entretenimiento minimalista" href="#">Pedir</a>
+            </div>
+          </div>
+        </article>
+
+        <article class="project">
+          <div class="project-top">
+            <div class="label"><span class="spark"></span> Baño</div>
+          </div>
+          <div class="project-body">
+            <div class="pill">🚿 Proyecto</div>
+            <h4>Mueble bajo lavamanos + espejo</h4>
+            <p class="tagline">Solución completa para baño: orden, estilo y buena distribución.</p>
+            <div class="project-meta">
+              <span class="meta-pill">Organización</span>
+              <span class="meta-pill">Diseño limpio</span>
+              <span class="meta-pill">Instalado</span>
+            </div>
+            <div class="row">
+              <div class="price">Cotización rápida</div>
+              <a class="mini-btn" data-wa="Proyecto: Mueble bajo lavamanos + espejo" href="#">Pedir</a>
+            </div>
+          </div>
+        </article>
+
+        <article class="project">
+          <div class="project-top">
+            <div class="label"><span class="spark"></span> Cocina</div>
+          </div>
+          <div class="project-body">
+            <div class="pill">🍳 Proyecto</div>
+            <h4>Cocina con isla para compartir</h4>
+            <p class="tagline">Ideal para casas modernas, con superficie amplia y guardado extra.</p>
+            <div class="project-meta">
+              <span class="meta-pill">Isla</span>
+              <span class="meta-pill">Moderno</span>
+              <span class="meta-pill">Funcional</span>
+            </div>
+            <div class="row">
+              <div class="price">Cotización rápida</div>
+              <a class="mini-btn" data-wa="Proyecto: Cocina con isla para compartir" href="#">Pedir</a>
+            </div>
+          </div>
+        </article>
       </div>
     </div>
   </section>
@@ -659,6 +995,7 @@
       <div>© <span id="year"></span> CAmuebla — A tu estilo</div>
       <div style="display:flex; gap:12px; flex-wrap:wrap;">
         <a href="#servicios">Servicios</a>
+        <a href="#proyectos">Proyectos</a>
         <a href="#catalogo">Catálogo</a>
         <a href="#contacto">Contacto</a>
       </div>
@@ -671,11 +1008,19 @@
 
   <script>
     // CONFIG
-    const PHONE = "50432265089"; // <- tu WhatsApp (sin +)
+    const PHONE = "50432265089"; // tu WhatsApp (sin +)
     const DEFAULT_MSG = "Hola CAmuebla, quiero una cotización. ";
 
     // Helpers
     const waLink = (text) => `https://wa.me/${PHONE}?text=${encodeURIComponent(text)}`;
+
+    // Loader: ocultar al cargar
+    const loader = document.getElementById("loader");
+    window.addEventListener("load", () => {
+      // mini delay para que se sienta premium
+      setTimeout(() => loader.classList.add("hide"), 450);
+      setTimeout(() => loader.remove(), 1100);
+    });
 
     // Nav mobile
     const hamb = document.getElementById("hamb");
@@ -692,7 +1037,7 @@
       menu.style.position = "absolute";
       menu.style.right = "18px";
       menu.style.top = "64px";
-      menu.style.width = "220px";
+      menu.style.width = "230px";
     });
 
     // WhatsApp buttons
@@ -715,12 +1060,12 @@
       });
     });
 
-    // Quick WA per item
+    // Quick WA per item / project
     document.querySelectorAll("[data-wa]").forEach(btn => {
       btn.addEventListener("click", (e) => {
         e.preventDefault();
         const product = btn.getAttribute("data-wa");
-        window.open(waLink(`${DEFAULT_MSG}Me interesa: ${product}. ¿Me ayudas con precio y tiempo?`), "_blank");
+        window.open(waLink(`${DEFAULT_MSG}${product}. ¿Me ayudas con precio y tiempo?`), "_blank");
       });
       btn.setAttribute("href", waLink(DEFAULT_MSG));
     });
@@ -741,6 +1086,27 @@ Detalles: ${data.get("message")}`;
 
     // Year
     document.getElementById("year").textContent = new Date().getFullYear();
+
+    // Animación al aparecer al hacer scroll
+    const revealTargets = document.querySelectorAll("section, .card, .item, .stat, .project, .hero-card, .side");
+    revealTargets.forEach(el => {
+      el.style.opacity = 0;
+      el.style.transform = "translateY(16px)";
+    });
+
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if(entry.isIntersecting){
+          entry.target.style.opacity = 1;
+          entry.target.style.transform = "translateY(0)";
+          entry.target.style.transition = "opacity .6s cubic-bezier(.2,.8,.2,1), transform .6s cubic-bezier(.2,.8,.2,1)";
+          io.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.12 });
+
+    revealTargets.forEach(el => io.observe(el));
   </script>
 </body>
 </html>
+
