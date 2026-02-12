@@ -1,13 +1,71 @@
-<!doctype html>
+from PIL import Image
+import os, zipfile, shutil, textwrap, re, math, pathlib
+
+base_dir = "/mnt/data/camuebla_site"
+assets_dir = os.path.join(base_dir, "assets")
+os.makedirs(assets_dir, exist_ok=True)
+
+logo_path = "/mnt/data/sin fondo.png"
+k1_path = "/mnt/data/WhatsApp Image 2026-02-11 at 1.53.20 PM (1).jpeg"
+k2_path = "/mnt/data/WhatsApp Image 2026-02-11 at 1.53.20 PM.jpeg"
+
+def crop_to_alpha(img_rgba):
+    import numpy as np
+    arr = np.array(img_rgba)
+    alpha = arr[:,:,3]
+    ys, xs = (alpha>0).nonzero()
+    if len(xs)==0: 
+        return img_rgba
+    bbox = (xs.min(), ys.min(), xs.max()+1, ys.max()+1)
+    return img_rgba.crop(bbox)
+
+def resize_max(img, max_w):
+    w,h = img.size
+    if w <= max_w:
+        return img
+    new_h = int(h * (max_w / w))
+    return img.resize((max_w, new_h), Image.LANCZOS)
+
+# Process logo
+logo = Image.open(logo_path).convert("RGBA")
+logo = crop_to_alpha(logo)
+logo_nav = resize_max(logo, 520)  # good quality for header/loader
+logo_nav.save(os.path.join(assets_dir, "logo.png"), "PNG", optimize=True)
+
+# Favicon and apple touch
+fav = resize_max(logo, 128)
+fav.save(os.path.join(assets_dir, "favicon.png"), "PNG", optimize=True)
+apple = resize_max(logo, 180)
+apple.save(os.path.join(assets_dir, "apple-touch-icon.png"), "PNG", optimize=True)
+
+def process_photo(src, stem, max_w=1600):
+    img = Image.open(src).convert("RGB")
+    img = resize_max(img, max_w)
+    jpg_out = os.path.join(assets_dir, f"{stem}.jpg")
+    webp_out = os.path.join(assets_dir, f"{stem}.webp")
+    img.save(jpg_out, "JPEG", quality=82, optimize=True, progressive=True)
+    img.save(webp_out, "WEBP", quality=80, method=6)
+    return img.size
+
+s1 = process_photo(k1_path, "cocina-1", 1600)
+s2 = process_photo(k2_path, "cocina-2", 1600)
+
+# Build index.html with assets references
+PHONE = "50432265089"
+EMAIL = "davidandres2014@gmail.com"
+
+index_html = f"""<!doctype html>
 <html lang="es">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>CAmuebla | A tu estilo</title>
   <meta name="description" content="CAmuebla: muebles a medida. Cocinas, salas, TV y baños. Diseño, fabricación e instalación en Tegucigalpa." />
+  <link rel="icon" href="assets/favicon.png" />
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
 
   <style>
-    :root{
+    :root{{
       --bg:#0b0f14;
       --card:#0f1722;
       --text:#e9eef6;
@@ -18,11 +76,10 @@
       --shadow: 0 18px 40px rgba(0,0,0,.35);
       --radius:18px;
       --max:1120px;
-
       --ease: cubic-bezier(.2,.8,.2,1);
-    }
-    *{box-sizing:border-box}
-    html,body{
+    }}
+    *{{box-sizing:border-box}}
+    html,body{{
       margin:0;padding:0;
       background:
         radial-gradient(1200px 600px at 20% -10%, rgba(255,209,102,.12), transparent 60%),
@@ -31,11 +88,11 @@
       color:var(--text);
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
       scroll-behavior:smooth;
-    }
-    a{color:inherit;text-decoration:none}
+    }}
+    a{{color:inherit;text-decoration:none}}
 
     /* ===== Transiciones globales ===== */
-    *{
+    *{{
       transition: color .25s var(--ease),
                   background-color .25s var(--ease),
                   border-color .25s var(--ease),
@@ -43,12 +100,12 @@
                   box-shadow .25s var(--ease),
                   opacity .25s var(--ease),
                   filter .25s var(--ease);
-    }
+    }}
 
-    .wrap{max-width:var(--max); margin:0 auto; padding:0 18px;}
+    .wrap{{max-width:var(--max); margin:0 auto; padding:0 18px;}}
 
     /* ===== LOADER ===== */
-    .loader{
+    .loader{{
       position:fixed; inset:0; z-index:9999;
       display:grid; place-items:center;
       background:
@@ -58,123 +115,45 @@
       backdrop-filter: blur(10px);
       opacity:1;
       pointer-events:all;
-    }
-    .loader.hide{
-      opacity:0;
-      pointer-events:none;
-    }
-    .loader-card{
-      width:min(520px, 92vw);
+    }}
+    .loader.hide{{opacity:0; pointer-events:none;}}
+    .loader-card{{
+      width:min(560px, 92vw);
       border:1px solid var(--line);
       border-radius: calc(var(--radius) + 10px);
       background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
       box-shadow: var(--shadow);
       padding:24px;
       text-align:center;
-    }
-    .loader-logo{
-      width:64px;height:64px;border-radius:22px;
-      margin: 6px auto 14px;
-      background: linear-gradient(135deg, rgba(255,209,102,.98), rgba(6,214,160,.95));
-      position:relative;
-      box-shadow: 0 18px 40px rgba(0,0,0,.35);
-    }
-    .loader-logo:before{
-      content:""; position:absolute; inset:16px 14px;
-      border-radius:16px; border:2px solid rgba(11,15,20,.65);
-    }
-    .loader-title{
-      font-weight:1000;
-      letter-spacing:.4px;
-      font-size:18px;
-      margin:0 0 6px;
-    }
-    .loader-sub{
-      color:var(--muted);
-      margin:0 0 16px;
-      line-height:1.5;
-      font-weight:700;
-      font-size:13px;
-    }
-    .bar{
-      height:12px;
-      border-radius:999px;
-      border:1px solid var(--line);
-      background: rgba(255,255,255,.04);
-      overflow:hidden;
-    }
-    .bar > span{
-      display:block; height:100%;
-      width: 35%;
-      border-radius:999px;
-      background: linear-gradient(135deg, rgba(255,209,102,.98), rgba(6,214,160,.95));
-      animation: loadbar 1.2s var(--ease) infinite;
-    }
-    @keyframes loadbar{
-      0%{ transform: translateX(-80%); width:35%;}
-      50%{ transform: translateX(30%); width:55%;}
-      100%{ transform: translateX(180%); width:35%;}
-    }
-    .loader-foot{
-      margin-top:12px;
-      color:rgba(233,238,246,.75);
-      font-size:12px;
-      font-weight:800;
-      letter-spacing:.2px;
-    }
+    }}
+    .loader-logo-img{{width:min(360px, 80vw); height:auto; display:block; margin: 6px auto 10px; filter: drop-shadow(0 18px 34px rgba(0,0,0,.35));}}
+    .loader-sub{{color:var(--muted); margin:0 0 16px; line-height:1.5; font-weight:700; font-size:13px;}}
+    .bar{{height:12px; border-radius:999px; border:1px solid var(--line); background: rgba(255,255,255,.04); overflow:hidden;}}
+    .bar > span{{display:block; height:100%; width: 35%; border-radius:999px; background: linear-gradient(135deg, rgba(255,209,102,.98), rgba(6,214,160,.95)); animation: loadbar 1.2s var(--ease) infinite;}}
+    @keyframes loadbar{{0%{{ transform: translateX(-80%); width:35%;}} 50%{{ transform: translateX(30%); width:55%;}} 100%{{ transform: translateX(180%); width:35%;}}}}
+    .loader-foot{{margin-top:12px; color:rgba(233,238,246,.75); font-size:12px; font-weight:800; letter-spacing:.2px;}}
 
     /* ===== NAV ===== */
-    .nav{
-      position:sticky; top:0; z-index:50;
-      backdrop-filter: blur(10px);
-      background: rgba(11,15,20,.72);
-      border-bottom:1px solid var(--line);
-    }
-    .nav-inner{display:flex; align-items:center; justify-content:space-between; padding:14px 0;}
-    .brand{display:flex; gap:10px; align-items:center;}
-    .logo{
-      width:40px;height:40px;border-radius:14px;
-      background: linear-gradient(135deg, rgba(255,209,102,.95), rgba(6,214,160,.9));
-      box-shadow: 0 12px 30px rgba(0,0,0,.25);
-      position:relative;
-    }
-    .logo:before{
-      content:""; position:absolute; inset:10px 9px 10px 9px;
-      border-radius:10px; border:2px solid rgba(11,15,20,.65);
-    }
-    .brand h1{font-size:18px; margin:0; letter-spacing:.4px;}
-    .brand small{display:block; color:var(--muted); margin-top:2px; font-size:12px;}
-    .menu{display:flex; gap:14px; align-items:center;}
-    .menu a{color:var(--muted); font-weight:600; font-size:14px; padding:10px 10px; border-radius:12px; position:relative;}
-    .menu a:hover{color:var(--text); background:rgba(255,255,255,.05)}
-    .menu a::after{
-      content:"";
-      position:absolute;
-      left:10px; right:10px; bottom:6px;
-      height:2px;
-      border-radius:999px;
-      background: linear-gradient(135deg, rgba(255,209,102,.98), rgba(6,214,160,.95));
-      transform: scaleX(0);
-      transform-origin:left;
-      opacity:.9;
-    }
-    .menu a:hover::after{transform: scaleX(1);}
-
-    .cta{
-      background: linear-gradient(135deg, rgba(255,209,102,.98), rgba(6,214,160,.95));
-      color:#0b0f14; font-weight:900;
-      padding:10px 14px; border-radius:14px;
-      box-shadow: 0 14px 30px rgba(0,0,0,.25);
-      border:1px solid rgba(255,255,255,.18);
-      position:relative;
-    }
-    .cta:hover{filter:brightness(1.02)}
-    .hamb{display:none; border:1px solid var(--line); background:rgba(255,255,255,.04); color:var(--text); border-radius:12px; padding:10px 12px; font-weight:800;}
+    .nav{{position:sticky; top:0; z-index:50; backdrop-filter: blur(10px); background: rgba(11,15,20,.72); border-bottom:1px solid var(--line);}}
+    .nav-inner{{display:flex; align-items:center; justify-content:space-between; padding:14px 0; position:relative;}}
+    .brand{{display:flex; gap:12px; align-items:center;}}
+    .brand-logo{{width:46px; height:46px; border-radius:14px; overflow:hidden; background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.10); display:grid; place-items:center;}}
+    .brand-logo img{{width:44px; height:44px; object-fit:contain;}}
+    .brand h1{{font-size:18px; margin:0; letter-spacing:.4px;}}
+    .brand small{{display:block; color:var(--muted); margin-top:2px; font-size:12px;}}
+    .menu{{display:flex; gap:14px; align-items:center;}}
+    .menu a{{color:var(--muted); font-weight:600; font-size:14px; padding:10px 10px; border-radius:12px; position:relative;}}
+    .menu a:hover{{color:var(--text); background:rgba(255,255,255,.05)}}
+    .menu a::after{{content:""; position:absolute; left:10px; right:10px; bottom:6px; height:2px; border-radius:999px; background: linear-gradient(135deg, rgba(255,209,102,.98), rgba(6,214,160,.95)); transform: scaleX(0); transform-origin:left; opacity:.9;}}
+    .menu a:hover::after{{transform: scaleX(1);}}
+    .cta{{background: linear-gradient(135deg, rgba(255,209,102,.98), rgba(6,214,160,.95)); color:#0b0f14; font-weight:900; padding:10px 14px; border-radius:14px; box-shadow: 0 14px 30px rgba(0,0,0,.25); border:1px solid rgba(255,255,255,.18); position:relative;}}
+    .cta:hover{{filter:brightness(1.02)}}
+    .hamb{{display:none; border:1px solid var(--line); background:rgba(255,255,255,.04); color:var(--text); border-radius:12px; padding:10px 12px; font-weight:800;}}
 
     /* ===== HERO ===== */
-    .hero{padding:54px 0 26px;}
-    .hero-grid{display:grid; grid-template-columns: 1.2fr .8fr; gap:20px; align-items:stretch;}
-    .hero-card{
+    .hero{{padding:54px 0 26px;}}
+    .hero-grid{{display:grid; grid-template-columns: 1.2fr .8fr; gap:20px; align-items:stretch;}}
+    .hero-card{{
       background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
       border:1px solid var(--line);
       border-radius: calc(var(--radius) + 6px);
@@ -182,335 +161,129 @@
       padding:28px;
       overflow:hidden;
       position:relative;
-    }
-    .hero-card:after{
-      content:""; position:absolute; width:340px; height:340px;
-      background: radial-gradient(circle at 30% 30%, rgba(255,209,102,.22), transparent 60%),
-                  radial-gradient(circle at 60% 70%, rgba(6,214,160,.16), transparent 60%);
-      top:-160px; right:-160px;
-    }
-    .kicker{
-      display:inline-flex; gap:10px; align-items:center;
-      padding:8px 12px; border-radius:999px;
-      border:1px solid var(--line);
-      background:rgba(255,255,255,.04);
-      color:var(--muted);
-      font-weight:700; font-size:13px;
-      position:relative; z-index:1;
-    }
-    .dot{width:8px;height:8px;border-radius:99px;background:var(--brand2); box-shadow: 0 0 0 6px rgba(6,214,160,.12);}
-    .hero h2{margin:14px 0 10px; font-size:44px; line-height:1.05; letter-spacing:-.6px; position:relative; z-index:1;}
-    .hero p{margin:0 0 18px; color:var(--muted); font-size:16px; line-height:1.6; max-width:58ch; position:relative; z-index:1;}
-    .actions{display:flex; flex-wrap:wrap; gap:12px; position:relative; z-index:1;}
-    .btn{
-      display:inline-flex; align-items:center; justify-content:center;
-      gap:10px;
-      padding:12px 16px; border-radius:14px;
-      border:1px solid var(--line);
-      background:rgba(255,255,255,.04);
-      color:var(--text);
-      font-weight:800; font-size:14px;
-      position:relative;
-      transform: translateZ(0);
-    }
-    .btn:hover{background:rgba(255,255,255,.06)}
-    .btn.primary{
-      border:none;
-      background: linear-gradient(135deg, rgba(255,209,102,.98), rgba(6,214,160,.95));
-      color:#0b0f14;
-    }
-    .badges{display:flex; gap:10px; flex-wrap:wrap; margin-top:16px; position:relative; z-index:1;}
-    .badge{
-      padding:9px 12px; border-radius:999px; border:1px solid var(--line);
-      background:rgba(255,255,255,.03); color:var(--muted); font-weight:800; font-size:12px;
-    }
+    }}
+    .hero-card:after{{content:""; position:absolute; width:340px; height:340px; background: radial-gradient(circle at 30% 30%, rgba(255,209,102,.22), transparent 60%), radial-gradient(circle at 60% 70%, rgba(6,214,160,.16), transparent 60%); top:-160px; right:-160px;}}
+    .kicker{{display:inline-flex; gap:10px; align-items:center; padding:8px 12px; border-radius:999px; border:1px solid var(--line); background:rgba(255,255,255,.04); color:var(--muted); font-weight:700; font-size:13px; position:relative; z-index:1;}}
+    .dot{{width:8px;height:8px;border-radius:99px;background:var(--brand2); box-shadow: 0 0 0 6px rgba(6,214,160,.12);}}
+    .hero h2{{margin:14px 0 10px; font-size:44px; line-height:1.05; letter-spacing:-.6px; position:relative; z-index:1;}}
+    .hero p{{margin:0 0 18px; color:var(--muted); font-size:16px; line-height:1.6; max-width:58ch; position:relative; z-index:1;}}
+    .actions{{display:flex; flex-wrap:wrap; gap:12px; position:relative; z-index:1;}}
+    .btn{{display:inline-flex; align-items:center; justify-content:center; gap:10px; padding:12px 16px; border-radius:14px; border:1px solid var(--line); background:rgba(255,255,255,.04); color:var(--text); font-weight:800; font-size:14px; position:relative; transform: translateZ(0);}}
+    .btn:hover{{background:rgba(255,255,255,.06)}}
+    .btn.primary{{border:none; background: linear-gradient(135deg, rgba(255,209,102,.98), rgba(6,214,160,.95)); color:#0b0f14;}}
+    .badges{{display:flex; gap:10px; flex-wrap:wrap; margin-top:16px; position:relative; z-index:1;}}
+    .badge{{padding:9px 12px; border-radius:999px; border:1px solid var(--line); background:rgba(255,255,255,.03); color:var(--muted); font-weight:800; font-size:12px;}}
 
     /* ===== SIDE CARD ===== */
-    .side{
-      border:1px solid var(--line);
-      border-radius: calc(var(--radius) + 6px);
-      background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
-      box-shadow: var(--shadow);
-      padding:22px;
-      display:flex; flex-direction:column; justify-content:space-between;
-    }
-    .side h3{margin:0 0 8px; font-size:18px;}
-    .side p{margin:0 0 16px; color:var(--muted); line-height:1.6;}
-    .statgrid{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
-    .stat{
-      border:1px solid var(--line);
-      border-radius:16px;
-      background:rgba(255,255,255,.03);
-      padding:12px;
-    }
-    .stat b{display:block; font-size:18px;}
-    .stat span{color:var(--muted); font-weight:700; font-size:12px;}
-    .divider{height:1px;background:var(--line);margin:16px 0;}
-    .contact-mini{
-      display:grid; gap:8px;
-      font-weight:700; color:var(--muted); font-size:13px;
-    }
-    .contact-mini a{color:var(--text)}
+    .side{{border:1px solid var(--line); border-radius: calc(var(--radius) + 6px); background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02)); box-shadow: var(--shadow); padding:22px; display:flex; flex-direction:column; justify-content:space-between;}}
+    .side h3{{margin:0 0 8px; font-size:18px;}}
+    .side p{{margin:0 0 16px; color:var(--muted); line-height:1.6;}}
+    .statgrid{{display:grid; grid-template-columns:1fr 1fr; gap:12px;}}
+    .stat{{border:1px solid var(--line); border-radius:16px; background:rgba(255,255,255,.03); padding:12px;}}
+    .stat b{{display:block; font-size:18px;}}
+    .stat span{{color:var(--muted); font-weight:700; font-size:12px;}}
+    .divider{{height:1px;background:var(--line);margin:16px 0;}}
+    .contact-mini{{display:grid; gap:8px; font-weight:700; color:var(--muted); font-size:13px;}}
+    .contact-mini a{{color:var(--text)}}
 
     /* ===== SECTIONS ===== */
-    section{padding:34px 0;}
-    .section-title{display:flex; align-items:end; justify-content:space-between; gap:14px; margin-bottom:14px;}
-    .section-title h3{margin:0; font-size:22px;}
-    .section-title p{margin:0; color:var(--muted); max-width:65ch; line-height:1.6;}
+    section{{padding:34px 0;}}
+    .section-title{{display:flex; align-items:end; justify-content:space-between; gap:14px; margin-bottom:14px;}}
+    .section-title h3{{margin:0; font-size:22px;}}
+    .section-title p{{margin:0; color:var(--muted); max-width:65ch; line-height:1.6;}}
+    .grid{{display:grid; gap:14px; grid-template-columns: repeat(12, 1fr);}}
+    .card{{grid-column: span 4; border:1px solid var(--line); background:rgba(255,255,255,.03); border-radius: var(--radius); padding:16px; box-shadow: 0 12px 28px rgba(0,0,0,.22);}}
+    .card h4{{margin:8px 0 6px; font-size:16px;}}
+    .card p{{margin:0; color:var(--muted); line-height:1.6; font-size:14px;}}
+    .pill{{display:inline-flex; align-items:center; gap:8px; font-weight:900; font-size:12px; padding:7px 10px; border-radius:999px; border:1px solid var(--line); background:rgba(255,255,255,.03); color:var(--muted);}}
+    .icon{{width:36px; height:36px; border-radius:14px; background: linear-gradient(135deg, rgba(255,209,102,.22), rgba(6,214,160,.18)); border:1px solid rgba(255,255,255,.10); display:grid; place-items:center; font-weight:900; color:var(--text);}}
 
-    .grid{
-      display:grid; gap:14px;
-      grid-template-columns: repeat(12, 1fr);
-    }
-    .card{
-      grid-column: span 4;
-      border:1px solid var(--line);
-      background:rgba(255,255,255,.03);
-      border-radius: var(--radius);
-      padding:16px;
-      box-shadow: 0 12px 28px rgba(0,0,0,.22);
-    }
-    .card h4{margin:8px 0 6px; font-size:16px;}
-    .card p{margin:0; color:var(--muted); line-height:1.6; font-size:14px;}
-
-    .pill{
-      display:inline-flex; align-items:center; gap:8px;
-      font-weight:900; font-size:12px;
-      padding:7px 10px; border-radius:999px;
-      border:1px solid var(--line);
-      background:rgba(255,255,255,.03);
-      color:var(--muted);
-    }
-    .icon{
-      width:36px; height:36px; border-radius:14px;
-      background: linear-gradient(135deg, rgba(255,209,102,.22), rgba(6,214,160,.18));
-      border:1px solid rgba(255,255,255,.10);
-      display:grid; place-items:center;
-      font-weight:900; color:var(--text);
-    }
+    /* ===== PROJECTS (con fotos reales) ===== */
+    .project{{grid-column: span 6; border:1px solid var(--line); border-radius: calc(var(--radius) + 2px); background: rgba(255,255,255,.03); overflow:hidden; box-shadow: 0 12px 28px rgba(0,0,0,.22); position:relative;}}
+    .project-top{{height:220px; position:relative; border-bottom: 1px solid var(--line); overflow:hidden;}}
+    .project-top img{{width:100%; height:100%; object-fit:cover; display:block; transform: scale(1.01);}}
+    .project-top:after{{content:""; position:absolute; inset:0; background: linear-gradient(180deg, rgba(11,15,20,.05), rgba(11,15,20,.58));}}
+    .project-top .label{{position:absolute; left:14px; top:14px; display:inline-flex; gap:8px; align-items:center; padding:8px 10px; border-radius:999px; border:1px solid rgba(255,255,255,.16); background: rgba(11,15,20,.55); color: rgba(233,238,246,.94); font-weight:1000; font-size:12px; z-index:2;}}
+    .project-top .label .spark{{width:8px;height:8px;border-radius:999px;background:var(--brand); box-shadow: 0 0 0 6px rgba(255,209,102,.12);}}
+    .project-body{{padding:14px;}}
+    .project-body h4{{margin:6px 0 6px; font-size:16px;}}
+    .tagline{{color:var(--muted); font-size:13px; line-height:1.5; margin-top:6px;}}
+    .project-meta{{display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;}}
+    .meta-pill{{font-weight:900; font-size:12px; padding:7px 10px; border-radius:999px; border:1px solid var(--line); background: rgba(255,255,255,.03); color: var(--muted);}}
 
     /* ===== CATALOG ===== */
-    .filters{display:flex; gap:10px; flex-wrap:wrap; margin:10px 0 16px;}
-    .chip{
-      cursor:pointer;
-      padding:10px 12px; border-radius:999px;
-      border:1px solid var(--line);
-      background:rgba(255,255,255,.03);
-      color:var(--muted); font-weight:900; font-size:13px;
-      user-select:none;
-    }
-    .chip.active{
-      color:#0b0f14;
-      border:none;
-      background: linear-gradient(135deg, rgba(255,209,102,.98), rgba(6,214,160,.95));
-    }
-    .item{
-      grid-column: span 4;
-      border:1px solid var(--line);
-      border-radius: var(--radius);
-      background:rgba(255,255,255,.03);
-      overflow:hidden;
-    }
-    .thumb{
-      height:140px;
-      background: linear-gradient(135deg, rgba(255,209,102,.20), rgba(6,214,160,.16));
-      border-bottom:1px solid var(--line);
-      position:relative;
-    }
-    .thumb:after{
-      content:"CAmuebla";
-      position:absolute; right:14px; bottom:12px;
-      font-weight:900; letter-spacing:.6px; font-size:12px;
-      color:rgba(233,238,246,.8);
-      opacity:.9;
-    }
-    .item-body{padding:14px;}
-    .tagline{color:var(--muted); font-size:13px; line-height:1.5; margin-top:6px;}
-    .row{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:12px;}
-    .price{font-weight:1000}
-    .mini-btn{
-      display:inline-flex; align-items:center; justify-content:center;
-      padding:10px 12px; border-radius:14px;
-      border:1px solid var(--line);
-      background:rgba(255,255,255,.03);
-      font-weight:900;
-      position:relative;
-      transform: translateZ(0);
-    }
-    .mini-btn:hover{background:rgba(255,255,255,.06)}
-
-    /* ===== PROJECTS (Recientes) ===== */
-    .project{
-      grid-column: span 6;
-      border:1px solid var(--line);
-      border-radius: calc(var(--radius) + 2px);
-      background: rgba(255,255,255,.03);
-      overflow:hidden;
-      box-shadow: 0 12px 28px rgba(0,0,0,.22);
-      position:relative;
-    }
-    .project-top{
-      height:180px;
-      background:
-        radial-gradient(220px 120px at 20% 30%, rgba(255,209,102,.25), transparent 60%),
-        radial-gradient(240px 140px at 80% 60%, rgba(6,214,160,.18), transparent 60%),
-        linear-gradient(135deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
-      border-bottom: 1px solid var(--line);
-      position:relative;
-    }
-    .project-top .label{
-      position:absolute; left:14px; top:14px;
-      display:inline-flex; gap:8px; align-items:center;
-      padding:8px 10px;
-      border-radius:999px;
-      border:1px solid var(--line);
-      background: rgba(11,15,20,.55);
-      color: rgba(233,238,246,.9);
-      font-weight:1000;
-      font-size:12px;
-    }
-    .project-top .label .spark{
-      width:8px;height:8px;border-radius:999px;background:var(--brand);
-      box-shadow: 0 0 0 6px rgba(255,209,102,.12);
-    }
-    .project-body{padding:14px;}
-    .project-body h4{margin:6px 0 6px; font-size:16px;}
-    .project-meta{
-      display:flex; gap:10px; flex-wrap:wrap;
-      margin-top:10px;
-    }
-    .meta-pill{
-      font-weight:900; font-size:12px;
-      padding:7px 10px;
-      border-radius:999px;
-      border:1px solid var(--line);
-      background: rgba(255,255,255,.03);
-      color: var(--muted);
-    }
+    .filters{{display:flex; gap:10px; flex-wrap:wrap; margin:10px 0 16px;}}
+    .chip{{cursor:pointer; padding:10px 12px; border-radius:999px; border:1px solid var(--line); background:rgba(255,255,255,.03); color:var(--muted); font-weight:900; font-size:13px; user-select:none;}}
+    .chip.active{{color:#0b0f14; border:none; background: linear-gradient(135deg, rgba(255,209,102,.98), rgba(6,214,160,.95));}}
+    .item{{grid-column: span 4; border:1px solid var(--line); border-radius: var(--radius); background:rgba(255,255,255,.03); overflow:hidden;}}
+    .thumb{{height:160px; border-bottom:1px solid var(--line); position:relative; overflow:hidden;}}
+    .thumb img{{width:100%; height:100%; object-fit:cover; display:block;}}
+    .thumb:after{{content:"CAmuebla"; position:absolute; right:14px; bottom:12px; font-weight:900; letter-spacing:.6px; font-size:12px; color:rgba(233,238,246,.88); z-index:2; text-shadow: 0 8px 22px rgba(0,0,0,.55);}}
+    .thumb:before{{content:""; position:absolute; inset:0; background: linear-gradient(180deg, rgba(11,15,20,.05), rgba(11,15,20,.50)); z-index:1;}}
+    .item-body{{padding:14px;}}
+    .row{{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:12px;}}
+    .price{{font-weight:1000}}
+    .mini-btn{{display:inline-flex; align-items:center; justify-content:center; padding:10px 12px; border-radius:14px; border:1px solid var(--line); background:rgba(255,255,255,.03); font-weight:900; position:relative; transform: translateZ(0);}}
+    .mini-btn:hover{{background:rgba(255,255,255,.06)}}
 
     /* ===== PROCESS ===== */
-    .steps .card{grid-column: span 3;}
+    .steps .card{{grid-column: span 3;}}
 
     /* ===== CONTACT ===== */
-    .contact{
-      display:grid; grid-template-columns: 1fr 1fr; gap:14px;
-    }
-    form{
-      border:1px solid var(--line);
-      border-radius: var(--radius);
-      background:rgba(255,255,255,.03);
-      padding:16px;
-    }
-    label{display:block; font-weight:900; font-size:12px; color:var(--muted); margin:10px 0 6px;}
-    input, textarea{
-      width:100%;
-      padding:12px 12px;
-      border-radius:14px;
-      border:1px solid rgba(255,255,255,.10);
-      background:rgba(11,15,20,.55);
-      color:var(--text);
-      outline:none;
-    }
-    textarea{min-height:120px; resize:vertical;}
-    input:focus, textarea:focus{border-color: rgba(255,209,102,.55); box-shadow: 0 0 0 4px rgba(255,209,102,.10);}
-    .form-actions{display:flex; gap:10px; flex-wrap:wrap; margin-top:12px;}
-    .note{color:var(--muted); font-size:13px; line-height:1.5;}
+    .contact{{display:grid; grid-template-columns: 1fr 1fr; gap:14px;}}
+    form{{border:1px solid var(--line); border-radius: var(--radius); background:rgba(255,255,255,.03); padding:16px;}}
+    label{{display:block; font-weight:900; font-size:12px; color:var(--muted); margin:10px 0 6px;}}
+    input, textarea{{width:100%; padding:12px 12px; border-radius:14px; border:1px solid rgba(255,255,255,.10); background:rgba(11,15,20,.55); color:var(--text); outline:none;}}
+    textarea{{min-height:120px; resize:vertical;}}
+    input:focus, textarea:focus{{border-color: rgba(255,209,102,.55); box-shadow: 0 0 0 4px rgba(255,209,102,.10);}}
+    .form-actions{{display:flex; gap:10px; flex-wrap:wrap; margin-top:12px;}}
+    .note{{color:var(--muted); font-size:13px; line-height:1.5;}}
 
     /* ===== FOOTER ===== */
-    footer{
-      border-top:1px solid var(--line);
-      padding:22px 0;
-      color:var(--muted);
-    }
-    .footer-grid{display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:space-between;}
+    footer{{border-top:1px solid var(--line); padding:22px 0; color:var(--muted);}}
+    .footer-grid{{display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:space-between;}}
 
     /* ===== WhatsApp Floating ===== */
-    .wa{
-      position:fixed; right:16px; bottom:16px;
-      background: linear-gradient(135deg, rgba(6,214,160,.98), rgba(255,209,102,.85));
-      color:#0b0f14;
-      font-weight:1000;
-      border-radius:999px;
-      padding:12px 14px;
-      box-shadow: 0 18px 40px rgba(0,0,0,.35);
-      border:1px solid rgba(255,255,255,.18);
-      display:flex; gap:10px; align-items:center;
-      z-index:80;
-      animation: floaty 2.2s var(--ease) infinite;
-      transform: translateZ(0);
-    }
-    .wa:hover{animation-play-state: paused; transform: translateY(-2px) scale(1.02); filter:brightness(1.02)}
-
-    @keyframes floaty{
-      0%,100%{ transform: translateY(0); }
-      50%{ transform: translateY(-4px); }
-    }
+    .wa{{position:fixed; right:16px; bottom:16px; background: linear-gradient(135deg, rgba(6,214,160,.98), rgba(255,209,102,.85)); color:#0b0f14; font-weight:1000; border-radius:999px; padding:12px 14px; box-shadow: 0 18px 40px rgba(0,0,0,.35); border:1px solid rgba(255,255,255,.18); display:flex; gap:10px; align-items:center; z-index:80; animation: floaty 2.2s var(--ease) infinite; transform: translateZ(0);}}
+    .wa:hover{{animation-play-state: paused; transform: translateY(-2px) scale(1.02); filter:brightness(1.02)}}
+    @keyframes floaty{{0%,100%{{ transform: translateY(0); }} 50%{{ transform: translateY(-4px); }}}}
 
     /* ===== Hover PRO: botones + shimmer ===== */
-    .btn:hover, .mini-btn:hover, .cta:hover{
-      transform: translateY(-2px) scale(1.02);
-      box-shadow: 0 18px 40px rgba(0,0,0,.28);
-      filter: brightness(1.03);
-    }
-    .btn:active, .mini-btn:active, .cta:active{
-      transform: translateY(0) scale(.99);
-    }
-    .btn::after, .mini-btn::after, .cta::after{
-      content:"";
-      position:absolute; inset:0;
-      border-radius: inherit;
-      background: linear-gradient(120deg, transparent 0%, rgba(255,255,255,.14) 40%, transparent 80%);
-      transform: translateX(-120%);
-      opacity:0;
-      pointer-events:none;
-    }
-    .btn:hover::after, .mini-btn:hover::after, .cta:hover::after{
-      opacity:1;
-      transform: translateX(120%);
-      transition: transform .7s var(--ease), opacity .2s var(--ease);
-    }
+    .btn:hover, .mini-btn:hover, .cta:hover{{transform: translateY(-2px) scale(1.02); box-shadow: 0 18px 40px rgba(0,0,0,.28); filter: brightness(1.03);}}
+    .btn:active, .mini-btn:active, .cta:active{{transform: translateY(0) scale(.99);}}
+    .btn::after, .mini-btn::after, .cta::after{{content:""; position:absolute; inset:0; border-radius: inherit; background: linear-gradient(120deg, transparent 0%, rgba(255,255,255,.14) 40%, transparent 80%); transform: translateX(-120%); opacity:0; pointer-events:none;}}
+    .btn:hover::after, .mini-btn:hover::after, .cta:hover::after{{opacity:1; transform: translateX(120%); transition: transform .7s var(--ease), opacity .2s var(--ease);}}
 
     /* ===== Hover PRO: cards ===== */
-    .card:hover, .item:hover, .stat:hover, .project:hover{
-      transform: translateY(-4px);
-      box-shadow: 0 22px 55px rgba(0,0,0,.35);
-      border-color: rgba(255,255,255,.16);
-    }
-    .item:hover .thumb{
-      transform: scale(1.03);
-      filter: contrast(1.02) brightness(1.02);
-    }
-    .chip:hover{
-      transform: translateY(-2px);
-      background: rgba(255,255,255,.05);
-      color: var(--text);
-    }
-    .chip.active:hover{ transform: translateY(-2px) scale(1.01); }
+    .card:hover, .item:hover, .stat:hover, .project:hover{{transform: translateY(-4px); box-shadow: 0 22px 55px rgba(0,0,0,.35); border-color: rgba(255,255,255,.16);}}
+    .item:hover .thumb img{{transform: scale(1.04);}}
+    .project:hover .project-top img{{transform: scale(1.04);}}
+    .chip:hover{{transform: translateY(-2px); background: rgba(255,255,255,.05); color: var(--text);}}
+    .chip.active:hover{{ transform: translateY(-2px) scale(1.01); }}
 
     /* ===== Responsive ===== */
-    @media (max-width: 920px){
-      .hero-grid{grid-template-columns: 1fr}
-      .menu{display:none}
-      .hamb{display:inline-flex}
-      .card{grid-column: span 6}
-      .item{grid-column: span 6}
-      .project{grid-column: span 12}
-      .steps .card{grid-column: span 6}
-      .contact{grid-template-columns:1fr}
-      .hero h2{font-size:38px}
-    }
-    @media (max-width: 560px){
-      .card{grid-column: span 12}
-      .item{grid-column: span 12}
-      .steps .card{grid-column: span 12}
-      .hero h2{font-size:34px}
-    }
+    @media (max-width: 920px){{
+      .hero-grid{{grid-template-columns: 1fr}}
+      .menu{{display:none}}
+      .hamb{{display:inline-flex}}
+      .card{{grid-column: span 6}}
+      .item{{grid-column: span 6}}
+      .project{{grid-column: span 12}}
+      .steps .card{{grid-column: span 6}}
+      .contact{{grid-template-columns:1fr}}
+      .hero h2{{font-size:38px}}
+    }}
+    @media (max-width: 560px){{
+      .card{{grid-column: span 12}}
+      .item{{grid-column: span 12}}
+      .steps .card{{grid-column: span 12}}
+      .hero h2{{font-size:34px}}
+    }}
 
-    /* ===== Accesibilidad ===== */
-    @media (prefers-reduced-motion: reduce){
-      *{ animation:none !important; transition:none !important; }
-      html{ scroll-behavior:auto; }
-    }
+    @media (prefers-reduced-motion: reduce){{
+      *{{ animation:none !important; transition:none !important; }}
+      html{{ scroll-behavior:auto; }}
+    }}
   </style>
 </head>
 
@@ -518,8 +291,7 @@
   <!-- LOADER -->
   <div class="loader" id="loader" aria-label="Cargando sitio">
     <div class="loader-card">
-      <div class="loader-logo" aria-hidden="true"></div>
-      <p class="loader-title">CAmuebla</p>
+      <img class="loader-logo-img" src="assets/logo.png" alt="Logo CAmuebla" />
       <p class="loader-sub">A tu estilo — cargando tu experiencia…</p>
       <div class="bar" aria-hidden="true"><span></span></div>
       <div class="loader-foot">Diseño • Fabricación • Instalación</div>
@@ -530,7 +302,9 @@
   <div class="nav">
     <div class="wrap nav-inner">
       <a class="brand" href="#inicio">
-        <div class="logo" aria-hidden="true"></div>
+        <div class="brand-logo" aria-hidden="true">
+          <img src="assets/logo.png" alt="CAmuebla" />
+        </div>
         <div>
           <h1>CAmuebla</h1>
           <small>A tu estilo</small>
@@ -590,8 +364,8 @@
           <div class="divider"></div>
           <div class="contact-mini">
             <div>📍 Tegucigalpa, Honduras</div>
-            <div>📞 <a href="tel:+50432265089">+504 3226-5089</a></div>
-            <div>✉️ <a href="mailto:davidandres2014@gmail.com">davidandres2014@gmail.com</a></div>
+            <div>📞 <a href="tel:+{PHONE}">+504 3226-5089</a></div>
+            <div>✉️ <a href="mailto:{EMAIL}">{EMAIL}</a></div>
           </div>
         </div>
       </aside>
@@ -654,87 +428,55 @@
       <div class="section-title">
         <div>
           <h3>Proyectos recientes</h3>
-          <p>Cuando me pasés fotos reales, aquí ponemos una galería top. Por ahora dejé ejemplos para que se vea lleno y pro.</p>
+          <p>Estos son trabajos reales de CAmuebla (cocinas). Vamos agregando más conforme me mandés fotos.</p>
         </div>
       </div>
 
       <div class="grid">
         <article class="project">
           <div class="project-top">
-            <div class="label"><span class="spark"></span> Cocina premium</div>
+            <picture>
+              <source srcset="assets/cocina-1.webp" type="image/webp">
+              <img src="assets/cocina-1.jpg" alt="Cocina moderna blanca con isla" loading="lazy">
+            </picture>
+            <div class="label"><span class="spark"></span> Cocina</div>
           </div>
           <div class="project-body">
-            <div class="pill">🍳 Proyecto</div>
-            <h4>Cocina en L con alacenas altas</h4>
-            <p class="tagline">Diseño moderno con espacios para micro, despensa y acabados elegantes.</p>
+            <div class="pill">🍳 Proyecto real</div>
+            <h4>Cocina blanca con isla y acabado tipo mármol</h4>
+            <p class="tagline">Diseño moderno con isla amplia y detalles que levantan el espacio.</p>
             <div class="project-meta">
               <span class="meta-pill">A medida</span>
-              <span class="meta-pill">Instalación</span>
+              <span class="meta-pill">Isla</span>
               <span class="meta-pill">Acabado premium</span>
             </div>
             <div class="row">
               <div class="price">Cotización rápida</div>
-              <a class="mini-btn" data-wa="Proyecto: Cocina en L con alacenas altas" href="#">Pedir</a>
+              <a class="mini-btn" data-wa="Proyecto: Cocina blanca con isla" href="#">Pedir</a>
             </div>
           </div>
         </article>
 
         <article class="project">
           <div class="project-top">
-            <div class="label"><span class="spark"></span> Sala / TV</div>
-          </div>
-          <div class="project-body">
-            <div class="pill">📺 Proyecto</div>
-            <h4>Centro de entretenimiento minimalista</h4>
-            <p class="tagline">Cables ocultos, repisas decorativas y almacenamiento para consolas.</p>
-            <div class="project-meta">
-              <span class="meta-pill">Minimalista</span>
-              <span class="meta-pill">Cables ocultos</span>
-              <span class="meta-pill">Repisas</span>
-            </div>
-            <div class="row">
-              <div class="price">Cotización rápida</div>
-              <a class="mini-btn" data-wa="Proyecto: Centro de entretenimiento minimalista" href="#">Pedir</a>
-            </div>
-          </div>
-        </article>
-
-        <article class="project">
-          <div class="project-top">
-            <div class="label"><span class="spark"></span> Baño</div>
-          </div>
-          <div class="project-body">
-            <div class="pill">🚿 Proyecto</div>
-            <h4>Mueble bajo lavamanos + espejo</h4>
-            <p class="tagline">Solución completa para baño: orden, estilo y buena distribución.</p>
-            <div class="project-meta">
-              <span class="meta-pill">Organización</span>
-              <span class="meta-pill">Diseño limpio</span>
-              <span class="meta-pill">Instalado</span>
-            </div>
-            <div class="row">
-              <div class="price">Cotización rápida</div>
-              <a class="mini-btn" data-wa="Proyecto: Mueble bajo lavamanos + espejo" href="#">Pedir</a>
-            </div>
-          </div>
-        </article>
-
-        <article class="project">
-          <div class="project-top">
+            <picture>
+              <source srcset="assets/cocina-2.webp" type="image/webp">
+              <img src="assets/cocina-2.jpg" alt="Cocina gris moderna con isla" loading="lazy">
+            </picture>
             <div class="label"><span class="spark"></span> Cocina</div>
           </div>
           <div class="project-body">
-            <div class="pill">🍳 Proyecto</div>
-            <h4>Cocina con isla para compartir</h4>
-            <p class="tagline">Ideal para casas modernas, con superficie amplia y guardado extra.</p>
+            <div class="pill">🍳 Proyecto real</div>
+            <h4>Cocina gris moderna con isla</h4>
+            <p class="tagline">Combinación elegante (gris + madera) con excelente almacenamiento.</p>
             <div class="project-meta">
+              <span class="meta-pill">Moderna</span>
+              <span class="meta-pill">Madera</span>
               <span class="meta-pill">Isla</span>
-              <span class="meta-pill">Moderno</span>
-              <span class="meta-pill">Funcional</span>
             </div>
             <div class="row">
               <div class="price">Cotización rápida</div>
-              <a class="mini-btn" data-wa="Proyecto: Cocina con isla para compartir" href="#">Pedir</a>
+              <a class="mini-btn" data-wa="Proyecto: Cocina gris moderna con isla" href="#">Pedir</a>
             </div>
           </div>
         </article>
@@ -748,7 +490,7 @@
       <div class="section-title">
         <div>
           <h3>Catálogo</h3>
-          <p>Ejemplos de lo que hacemos. Podés pedirlos igual o personalizarlos a tu estilo.</p>
+          <p>Ejemplos de lo que hacemos. Por ahora cocinas reales; luego agregamos TV, sala y baño con tus fotos.</p>
         </div>
       </div>
 
@@ -761,110 +503,85 @@
       </div>
 
       <div class="grid" id="items">
-        <!-- Cocina -->
+        <!-- Cocina (reales) -->
         <article class="item" data-cat="cocina">
-          <div class="thumb"></div>
+          <div class="thumb">
+            <picture>
+              <source srcset="assets/cocina-1.webp" type="image/webp">
+              <img src="assets/cocina-1.jpg" alt="Cocina blanca con isla" loading="lazy">
+            </picture>
+          </div>
           <div class="item-body">
             <div class="pill">🍳 Cocina</div>
-            <h4>Cocina moderna en L</h4>
-            <div class="tagline">Aprovecha esquinas, espacio para micro y alacenas superiores.</div>
+            <h4>Cocina blanca con isla</h4>
+            <div class="tagline">Estilo moderno, isla amplia y acabado elegante.</div>
             <div class="row">
               <div class="price">Cotización rápida</div>
-              <a class="mini-btn" data-wa="Cocina moderna en L" href="#">Pedir</a>
+              <a class="mini-btn" data-wa="Cocina blanca con isla (foto)" href="#">Pedir</a>
             </div>
           </div>
         </article>
 
         <article class="item" data-cat="cocina">
-          <div class="thumb"></div>
+          <div class="thumb">
+            <picture>
+              <source srcset="assets/cocina-2.webp" type="image/webp">
+              <img src="assets/cocina-2.jpg" alt="Cocina gris moderna con isla" loading="lazy">
+            </picture>
+          </div>
           <div class="item-body">
             <div class="pill">🍳 Cocina</div>
-            <h4>Cocina con isla</h4>
-            <div class="tagline">Diseño premium con isla central para cocinar y compartir.</div>
+            <h4>Cocina gris moderna</h4>
+            <div class="tagline">Combinación gris + madera, moderna y funcional.</div>
             <div class="row">
               <div class="price">Cotización rápida</div>
-              <a class="mini-btn" data-wa="Cocina con isla" href="#">Pedir</a>
+              <a class="mini-btn" data-wa="Cocina gris moderna (foto)" href="#">Pedir</a>
             </div>
           </div>
         </article>
 
-        <!-- TV -->
+        <!-- Placeholders (por ahora) -->
         <article class="item" data-cat="tv">
-          <div class="thumb"></div>
+          <div class="thumb">
+            <img src="assets/cocina-1.jpg" alt="Ejemplo temporal" loading="lazy">
+          </div>
           <div class="item-body">
             <div class="pill">📺 TV</div>
-            <h4>Mueble TV flotante</h4>
-            <div class="tagline">Minimalista, cables ocultos y repisas decorativas.</div>
+            <h4>Mueble TV (pronto con fotos)</h4>
+            <div class="tagline">Cuando me mandés fotos de TV, esto queda real.</div>
             <div class="row">
               <div class="price">Cotización rápida</div>
-              <a class="mini-btn" data-wa="Mueble TV flotante" href="#">Pedir</a>
-            </div>
-          </div>
-        </article>
-
-        <article class="item" data-cat="tv">
-          <div class="thumb"></div>
-          <div class="item-body">
-            <div class="pill">📺 TV</div>
-            <h4>Centro de entretenimiento</h4>
-            <div class="tagline">Almacenamiento, vitrinas y espacio para consolas.</div>
-            <div class="row">
-              <div class="price">Cotización rápida</div>
-              <a class="mini-btn" data-wa="Centro de entretenimiento" href="#">Pedir</a>
-            </div>
-          </div>
-        </article>
-
-        <!-- Sala -->
-        <article class="item" data-cat="sala">
-          <div class="thumb"></div>
-          <div class="item-body">
-            <div class="pill">🛋️ Sala</div>
-            <h4>Consola para sala</h4>
-            <div class="tagline">Ideal para entrada o pared principal, estilo moderno.</div>
-            <div class="row">
-              <div class="price">Cotización rápida</div>
-              <a class="mini-btn" data-wa="Consola para sala" href="#">Pedir</a>
+              <a class="mini-btn" data-wa="Mueble TV (quiero cotizar)" href="#">Pedir</a>
             </div>
           </div>
         </article>
 
         <article class="item" data-cat="sala">
-          <div class="thumb"></div>
+          <div class="thumb">
+            <img src="assets/cocina-2.jpg" alt="Ejemplo temporal" loading="lazy">
+          </div>
           <div class="item-body">
             <div class="pill">🛋️ Sala</div>
-            <h4>Repisas decorativas</h4>
-            <div class="tagline">Diseño limpio para decorar y organizar sin recargar.</div>
+            <h4>Mueble sala (pronto con fotos)</h4>
+            <div class="tagline">Cuando me mandés fotos de sala, lo actualizo.</div>
             <div class="row">
               <div class="price">Cotización rápida</div>
-              <a class="mini-btn" data-wa="Repisas decorativas" href="#">Pedir</a>
-            </div>
-          </div>
-        </article>
-
-        <!-- Baño -->
-        <article class="item" data-cat="bano">
-          <div class="thumb"></div>
-          <div class="item-body">
-            <div class="pill">🚿 Baño</div>
-            <h4>Mueble bajo lavamanos</h4>
-            <div class="tagline">Cajones y puertas para organización con estilo.</div>
-            <div class="row">
-              <div class="price">Cotización rápida</div>
-              <a class="mini-btn" data-wa="Mueble bajo lavamanos" href="#">Pedir</a>
+              <a class="mini-btn" data-wa="Mueble sala (quiero cotizar)" href="#">Pedir</a>
             </div>
           </div>
         </article>
 
         <article class="item" data-cat="bano">
-          <div class="thumb"></div>
+          <div class="thumb">
+            <img src="assets/cocina-1.jpg" alt="Ejemplo temporal" loading="lazy">
+          </div>
           <div class="item-body">
             <div class="pill">🚿 Baño</div>
-            <h4>Gabinete + espejo</h4>
-            <div class="tagline">Solución completa para baño: espejo y almacenamiento.</div>
+            <h4>Mueble baño (pronto con fotos)</h4>
+            <div class="tagline">En cuanto me mandés fotos de baños, se actualiza.</div>
             <div class="row">
               <div class="price">Cotización rápida</div>
-              <a class="mini-btn" data-wa="Gabinete + espejo" href="#">Pedir</a>
+              <a class="mini-btn" data-wa="Mueble baño (quiero cotizar)" href="#">Pedir</a>
             </div>
           </div>
         </article>
@@ -925,13 +642,13 @@
         </div>
         <div class="card">
           <div class="pill">⭐ Cliente</div>
-          <h4>“El mueble de TV se ve premium”</h4>
-          <p>Diseño moderno y cables ocultos, quedó ordenado y elegante.</p>
+          <h4>“Se mira premium”</h4>
+          <p>Diseño moderno y excelente instalación, quedó elegante.</p>
         </div>
         <div class="card">
           <div class="pill">⭐ Cliente</div>
-          <h4>“Excelente instalación”</h4>
-          <p>Todo nivelado, limpio y con detalles bien rematados.</p>
+          <h4>“Excelente trabajo”</h4>
+          <p>Detalles bien rematados y buena atención.</p>
         </div>
       </div>
     </div>
@@ -963,7 +680,7 @@
 
           <div class="form-actions">
             <button class="btn primary" type="submit">Enviar por WhatsApp</button>
-            <a class="btn" href="mailto:davidandres2014@gmail.com">Enviar por correo</a>
+            <a class="btn" href="mailto:{EMAIL}">Enviar por correo</a>
           </div>
           <p class="note">Tip: si tenés fotos del espacio, enviálas por WhatsApp para cotizar más rápido.</p>
         </form>
@@ -974,8 +691,8 @@
             <p>Atendemos en Tegucigalpa y alrededores. Cotización rápida por WhatsApp.</p>
             <div class="divider"></div>
             <div class="contact-mini">
-              <div><b>📞 Tel/WhatsApp:</b> <a href="tel:+50432265089">+504 3226-5089</a></div>
-              <div><b>✉️ Email:</b> <a href="mailto:davidandres2014@gmail.com">davidandres2014@gmail.com</a></div>
+              <div><b>📞 Tel/WhatsApp:</b> <a href="tel:+{PHONE}">+504 3226-5089</a></div>
+              <div><b>✉️ Email:</b> <a href="mailto:{EMAIL}">{EMAIL}</a></div>
               <div><b>📍 Zona:</b> Tegucigalpa, Honduras</div>
             </div>
           </div>
@@ -1002,30 +719,27 @@
     </div>
   </footer>
 
-  <a class="wa" id="wa-float" href="#" aria-label="WhatsApp">
-    💬 WhatsApp
-  </a>
+  <a class="wa" id="wa-float" href="#" aria-label="WhatsApp">💬 WhatsApp</a>
 
   <script>
     // CONFIG
-    const PHONE = "50432265089"; // tu WhatsApp (sin +)
+    const PHONE = "{PHONE}";
     const DEFAULT_MSG = "Hola CAmuebla, quiero una cotización. ";
 
     // Helpers
-    const waLink = (text) => `https://wa.me/${PHONE}?text=${encodeURIComponent(text)}`;
+    const waLink = (text) => `https://wa.me/${{PHONE}}?text=${{encodeURIComponent(text)}}`;
 
-    // Loader: ocultar al cargar
+    // Loader
     const loader = document.getElementById("loader");
-    window.addEventListener("load", () => {
-      // mini delay para que se sienta premium
+    window.addEventListener("load", () => {{
       setTimeout(() => loader.classList.add("hide"), 450);
       setTimeout(() => loader.remove(), 1100);
-    });
+    }});
 
     // Nav mobile
     const hamb = document.getElementById("hamb");
     const menu = document.getElementById("menu");
-    hamb?.addEventListener("click", () => {
+    hamb?.addEventListener("click", () => {{
       const isOpen = menu.style.display === "flex";
       menu.style.display = isOpen ? "none" : "flex";
       menu.style.flexDirection = "column";
@@ -1038,7 +752,7 @@
       menu.style.right = "18px";
       menu.style.top = "64px";
       menu.style.width = "230px";
-    });
+    }});
 
     // WhatsApp buttons
     document.getElementById("btn-wa").href = waLink(DEFAULT_MSG);
@@ -1048,65 +762,82 @@
     // Catalog filter
     const chips = document.querySelectorAll(".chip");
     const items = document.querySelectorAll(".item");
-    chips.forEach(chip => {
-      chip.addEventListener("click", () => {
+    chips.forEach(chip => {{
+      chip.addEventListener("click", () => {{
         chips.forEach(c => c.classList.remove("active"));
         chip.classList.add("active");
         const f = chip.dataset.filter;
-        items.forEach(it => {
+        items.forEach(it => {{
           const cat = it.dataset.cat;
           it.style.display = (f === "all" || f === cat) ? "block" : "none";
-        });
-      });
-    });
+        }});
+      }});
+    }});
 
     // Quick WA per item / project
-    document.querySelectorAll("[data-wa]").forEach(btn => {
-      btn.addEventListener("click", (e) => {
+    document.querySelectorAll("[data-wa]").forEach(btn => {{
+      btn.addEventListener("click", (e) => {{
         e.preventDefault();
         const product = btn.getAttribute("data-wa");
-        window.open(waLink(`${DEFAULT_MSG}${product}. ¿Me ayudas con precio y tiempo?`), "_blank");
-      });
+        window.open(waLink(`${{DEFAULT_MSG}}${{product}}. ¿Me ayudas con precio y tiempo?`), "_blank");
+      }});
       btn.setAttribute("href", waLink(DEFAULT_MSG));
-    });
+    }});
 
     // Form -> WhatsApp
-    document.getElementById("form").addEventListener("submit", (e) => {
+    document.getElementById("form").addEventListener("submit", (e) => {{
       e.preventDefault();
       const data = new FormData(e.target);
       const msg =
 `Hola CAmuebla, quiero una cotización:
-Nombre: ${data.get("name")}
-Tel: ${data.get("phone")}
-Mueble: ${data.get("service")}
-Detalles: ${data.get("message")}`;
+Nombre: ${{data.get("name")}}
+Tel: ${{data.get("phone")}}
+Mueble: ${{data.get("service")}}
+Detalles: ${{data.get("message")}}`;
       window.open(waLink(msg), "_blank");
       e.target.reset();
-    });
+    }});
 
     // Year
     document.getElementById("year").textContent = new Date().getFullYear();
 
     // Animación al aparecer al hacer scroll
     const revealTargets = document.querySelectorAll("section, .card, .item, .stat, .project, .hero-card, .side");
-    revealTargets.forEach(el => {
+    revealTargets.forEach(el => {{
       el.style.opacity = 0;
       el.style.transform = "translateY(16px)";
-    });
+    }});
 
-    const io = new IntersectionObserver((entries) => {
-      entries.forEach((entry) => {
-        if(entry.isIntersecting){
+    const io = new IntersectionObserver((entries) => {{
+      entries.forEach((entry) => {{
+        if(entry.isIntersecting){{
           entry.target.style.opacity = 1;
           entry.target.style.transform = "translateY(0)";
           entry.target.style.transition = "opacity .6s cubic-bezier(.2,.8,.2,1), transform .6s cubic-bezier(.2,.8,.2,1)";
           io.unobserve(entry.target);
-        }
-      });
-    }, { threshold: 0.12 });
+        }}
+      }});
+    }}, {{ threshold: 0.12 }});
 
     revealTargets.forEach(el => io.observe(el));
   </script>
 </body>
 </html>
+"""
+
+with open(os.path.join(base_dir, "index.html"), "w", encoding="utf-8") as f:
+    f.write(index_html)
+
+# Zip it
+zip_path = "/mnt/data/CAmuebla_site_con_fotos.zip"
+with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as z:
+    for root, _, files in os.walk(base_dir):
+        for fn in files:
+            full = os.path.join(root, fn)
+            rel = os.path.relpath(full, base_dir)
+            z.write(full, arcname=rel)
+
+zip_path, s1, s2, os.listdir(assets_dir)[:10]
+
+
 
